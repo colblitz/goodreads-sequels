@@ -1,4 +1,4 @@
-from flask import Flask, send_file, request, redirect, url_for, flash, session
+from flask import Flask, send_file, request, redirect, url_for, flash, session, render_template
 from flask_oauthlib.client import OAuth, OAuthException, OAuthRemoteApp, parse_response
 from werkzeug import url_decode
 import oauth2 as oldOauth
@@ -43,16 +43,25 @@ def get_goodreads_token(token=None):
 	return session.get('goodreads_token')
 
 @app.route('/')
+@app.route("/index")
 def index():
-	return send_file('templates/index.html')
+	session.clear()
+	return render_template('index.html', message="Hi.")
 
 @app.route('/logged_in')
 def logged_in():
-	return send_file('templates/blah.html')
+	if not session['goodreads_token']:
+		redirect(url_for('index'))
+
+	resp = goodreads.get('/api/auth_user')
+	print "response:\n"
+	print resp
+
+	return render_template('index.html', message="Look at your shelves")
 
 @app.route('/denied')
 def denied():
-	return send_file('templates/denied.html')
+	return render_template('index.html', message="Maybe next time o/")
 
 @app.route('/login')
 def login():
