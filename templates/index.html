@@ -3,17 +3,27 @@
 <head>
 <meta charset="utf-8">
 <title>Sequel Shelver</title>
-  <link rel="stylesheet" href="static/css/style.css">
+<link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
   <div class="message">
     {{ message }}
   </div>
-  <form>
-    <button><a href="/login">Connect to Goodreads</a></button>
-  </form>
+  {% if session['goodreads_token'] and shelfItems %}
+    <ul>
+    {% for shelf in shelfItems %}
+      <li class="shelf" data-name={{shelf.name}}>{{shelf.name}} ({{shelf.count}})</li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <form>
+      <button><a href="/login">Connect to Goodreads</a></button>
+    </form>
+  {% endif %}
   <footer>
     Footer
   </footer>
+  <script src="static/js/jquery-3.1.1.min.js"></script>
+  <script src="static/js/app.js"></script>
 </body>
 </html>

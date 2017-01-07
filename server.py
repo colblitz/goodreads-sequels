@@ -1,6 +1,9 @@
 from flask import Flask, send_file, request, redirect, url_for, flash, session, render_template
 from flask_oauthlib.client import OAuth, OAuthException, OAuthRemoteApp, parse_response
 from werkzeug import url_decode
+
+from xml.etree.ElementTree import ElementTree
+
 import oauth2 as oldOauth
 
 import config
@@ -38,6 +41,28 @@ goodreads = GoodreadsOAuthRemoteApp(oauth, 'goodreads',
 	consumer_key=config.goodreadsKey,
 	consumer_secret=config.goodreadsSecret)
 
+def elementtree_to_dict(element):
+    node = dict()
+
+    text = getattr(element, 'text', None)
+    if text is not None:
+        node['text'] = text
+
+    node.update(element.items()) # element's attributes
+
+    child_nodes = {}
+    for child in element: # element's children
+        child_nodes.setdefault(child, []).append( elementtree_to_dict(child) )
+
+    # convert all single-element lists into non-lists
+    for key, value in child_nodes.items():
+        if len(value) == 1:
+             child_nodes[key] = value[0]
+
+    node.update(child_nodes.items())
+
+    return node
+
 @goodreads.tokengetter
 def get_goodreads_token(token=None):
 	return session.get('goodreads_token')
@@ -45,19 +70,39 @@ def get_goodreads_token(token=None):
 @app.route('/')
 @app.route("/index")
 def index():
-	session.clear()
-	return render_template('index.html', message="Hi.")
+	if session['goodreads_token']:
+		print 'still have token'
+		return redirect(url_for('logged_in'))
+	return render_template('index.html', message="Hasdfi.")
 
 @app.route('/logged_in')
 def logged_in():
+	print "logged in"
 	if not session['goodreads_token']:
-		redirect(url_for('index'))
+		print "going to index"
+		return redirect(url_for('index'))
 
+	print "request user"
 	resp = goodreads.get('/api/auth_user')
-	print "response:\n"
-	print resp
+	userId = resp.data.find('user').get('id')
+	username = resp.data.find('user/name').text
 
-	return render_template('index.html', message="Look at your shelves")
+	shelves = goodreads.get('/shelf/list.xml', data = {
+		'key': config.goodreadsKey,
+		'user_id': userId,
+	})
+
+	shelfItems = map(lambda x: {
+		'name': x.find('name').text,
+		'count': int(x.find('book_count').text)
+	}, shelves.data.findall("./shelves/user_shelf"))
+
+	return render_template('index.html', message="Look at your shelves", shelfItems=shelfItems)
+
+@app.route('/sequelize', methods=['POST'])
+def sequelize():
+	print request.json['name']
+	return render_template('index.html', message='Sequelizing')
 
 @app.route('/denied')
 def denied():
