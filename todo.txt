@@ -1,0 +1,8 @@
+ - styling
+ - multiple series
+ - custom name for new shelf
+ - intermediate step - show "Add these books"
+ 	- check/uncheck/"ignore this series"
+ 	- show books that are ignored, with "unignore this series"
+ - Series that are set in the same world (Sins of Empire is start of new trilogy following Powder Mage, Robin Hobb's series are all kind of together, Riftwar Saga)
+ 	 - just "new books by author"?

@@ -4,7 +4,10 @@ $('.shelf').click(function() {
   $.ajax({
     type : "POST",
     url : "sequelize",
-    data: JSON.stringify({name: $this.data("name")}),
+    data: JSON.stringify({
+      name: $this.data("name"),
+      count: $this.data("count")
+    }),
     contentType: 'application/json;charset=UTF-8',
     success: function(result) {
       $this.text("Done!");

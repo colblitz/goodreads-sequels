@@ -12,7 +12,7 @@
   {% if session['goodreads_token'] and shelfItems %}
     <ul>
     {% for shelf in shelfItems %}
-      <li class="shelf" data-name={{shelf.name}}>{{shelf.name}} ({{shelf.count}})</li>
+      <li class="shelf" data-name={{shelf.name}} data-count={{shelf.count}}>{{shelf.name}} ({{shelf.count}})</li>
     {% endfor %}
     </ul>
   {% else %}
