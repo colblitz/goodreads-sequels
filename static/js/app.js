@@ -1,16 +1,22 @@
 $('.shelf').click(function() {
   var $this = $(this);
-
+  var shelfName = $this.data("name");
   $.ajax({
     type : "POST",
     url : "sequelize",
     data: JSON.stringify({
-      name: $this.data("name"),
+      name: shelfName,
       count: $this.data("count")
     }),
     contentType: 'application/json;charset=UTF-8',
     success: function(result) {
-      $this.text("Done!");
+      console.log("done");
+      console.log(result);
+
+      var myDiv = $('#' + shelfName + '-result');
+      console.log(myDiv);
+      myDiv.html(result);
+
       $this.prop('onclick',null).off('click');
     }
   });

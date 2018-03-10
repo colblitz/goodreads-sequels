@@ -123,11 +123,19 @@ def getSeriesToQuery(seriesIds):
 	return seriesToQuery
 
 def getBooksToAdd(readInSeries):
-	bestBookIds = set()
+	bestBookIds = {}
 	for row in query_db("SELECT * FROM works WHERE seriesId IN (%s)" % joinInts(readInSeries.keys())):
+		if row['seriesId'] not in bestBookIds:
+			bestBookIds[row['seriesId']] = set()
 		if row['position'] > readInSeries[row['seriesId']]:
-			bestBookIds.add(row['bestBookId'])
+			bestBookIds[row['seriesId']].add(row['bestBookId'])
 	return bestBookIds
+
+	# bestBookIds = set()
+	# for row in query_db("SELECT * FROM works WHERE seriesId IN (%s)" % joinInts(readInSeries.keys())):
+	# 	if row['position'] > readInSeries[row['seriesId']]:
+	# 		bestBookIds.add(row['bestBookId'])
+	# return bestBookIds
 
 def insertBookRows(bookDicts):
 	bookTuples = map(lambda x: bookDictToTuple(x), bookDicts)
@@ -155,9 +163,12 @@ class GoodreadsOAuthRemoteApp(OAuthRemoteApp):
 		if request.args.get('authorize') == 0:
 			return None
 
+		print "lkjalskdjflkjasdf"
 		consumer = oldOauth.Consumer(key=self.consumer_key, secret=self.consumer_secret)
 		client = oldOauth.Client(consumer, oldOauth.Token(*session['%s_oauthtok' % self.name]))
 		response, content = client.request(self.access_token_url, 'POST')
+
+		print response
 
 		if response['status'] not in ('200', '201'):
 			raise OAuthException(
@@ -169,9 +180,9 @@ class GoodreadsOAuthRemoteApp(OAuthRemoteApp):
 
 goodreads = GoodreadsOAuthRemoteApp(oauth, 'goodreads',
 	base_url='https://www.goodreads.com',
-	request_token_url='http://www.goodreads.com/oauth/request_token',
-	authorize_url='http://www.goodreads.com/oauth/authorize',
-	access_token_url='http://www.goodreads.com/oauth/access_token',
+	request_token_url='https://www.goodreads.com/oauth/request_token',
+	authorize_url='https://www.goodreads.com/oauth/authorize',
+	access_token_url='https://www.goodreads.com/oauth/access_token',
 	consumer_key=config.goodreadsKey,
 	consumer_secret=config.goodreadsSecret)
 
@@ -328,23 +339,26 @@ def makeSequelsShelf(name, count):
 	processSeries(seriesToQuery)
 
 	booksToAdd = getBooksToAdd(readInSeries)
-	print "books to add: ", len(booksToAdd)
+	print "books to add: ", booksToAdd
 
-	# create new shelf
-	newShelfName = name + '-sequels'
-	print "creating new shelf"
-	goodreads.post('/user_shelves.xml', data = {
-		'user_shelf[name]': newShelfName
-	})
-	print "done creating new shelf: ", newShelfName
+	return booksToAdd
 
-	print "adding books to new shelf"
-	# add all books to new shelf
-	goodreads.post('/shelf/add_books_to_shelves.xml', data = {
-		'bookids': joinInts(booksToAdd),
-		'shelves': newShelfName + ",to-read"
-	})
-	print "done"
+
+	# # create new shelf
+	# newShelfName = name + '-sequels'
+	# print "creating new shelf"
+	# goodreads.post('/user_shelves.xml', data = {
+	# 	'user_shelf[name]': newShelfName
+	# })
+	# print "done creating new shelf: ", newShelfName
+
+	# print "adding books to new shelf"
+	# # add all books to new shelf
+	# goodreads.post('/shelf/add_books_to_shelves.xml', data = {
+	# 	'bookids': joinInts(booksToAdd),
+	# 	'shelves': newShelfName + ",to-read"
+	# })
+	# print "done"
 
 ##############
 # Flask Routes
@@ -352,7 +366,7 @@ def makeSequelsShelf(name, count):
 @app.route('/')
 @app.route("/index")
 def index():
-	if session['goodreads_token']:
+	if session.get('goodreads_token', False):
 		print 'still have token'
 		return redirect(url_for('logged_in'))
 	return render_template('index.html', message="Hasdfi.")
@@ -386,12 +400,37 @@ def logged_in():
 
 @app.route('/sequelize', methods=['POST'])
 def sequelize():
-	makeSequelsShelf(request.json['name'], request.json['count'])
+	booksToAdd = makeSequelsShelf(request.json['name'], request.json['count'])
 	# print "getting books on shelf: ", request.json['name']
 	# # get name of every book on shelf
 	# getAllBooksFromShelf(request.json['name'], request.json['count'])
 
-	return render_template('index.html', message='Sequelizing')
+	# Get human readable information
+
+	print "rendering template"
+	return render_template('newshelf.html', booksToAdd=booksToAdd)
+
+@app.route('/createShelf', methods=['POST'])
+def createShelf():
+
+	# # create new shelf
+	# newShelfName = name + '-sequels'
+	# print "creating new shelf"
+	# goodreads.post('/user_shelves.xml', data = {
+	# 	'user_shelf[name]': newShelfName
+	# })
+	# print "done creating new shelf: ", newShelfName
+
+	# print "adding books to new shelf"
+	# # add all books to new shelf
+	# goodreads.post('/shelf/add_books_to_shelves.xml', data = {
+	# 	'bookids': joinInts(booksToAdd),
+	# 	'shelves': newShelfName + ",to-read"
+	# })
+	# print "done"
+
+	return render_template('index.html')
+
 
 @app.route('/denied')
 def denied():

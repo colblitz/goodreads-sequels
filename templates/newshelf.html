@@ -1,0 +1,6 @@
+lajlsjdlfjlkasdf
+<ul>
+	{% for seriesId in booksToAdd %}
+	  <li>{{seriesId}} - {% for workId in booksToAdd[seriesId] %} {{workId}} {% endfor %}</li>
+	{% endfor %}
+</ul>
