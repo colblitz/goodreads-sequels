@@ -7,6 +7,8 @@ create table books (
 );
 create table works (
   workId integer primary key not null,
+  workName text,
+  bookImageUrl text,
   bestBookId integer,
   seriesId integer,
   position real,
@@ -15,5 +17,6 @@ create table works (
 );
 create table series (
   seriesId integer primary key not null,
+  seriesName text,
   lastChecked integer
 );

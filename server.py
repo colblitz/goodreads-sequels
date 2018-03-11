@@ -5,6 +5,7 @@ from werkzeug import url_decode
 import oauth2 as oldOauth
 import os
 import sqlite3
+import re
 
 from datetime import date
 
@@ -69,6 +70,8 @@ def joinInts(l):
 def newWorkDict():
 	return {
 		"workId": None,
+		"workName": None,
+		"bookImageUrl": None,
 		"bestBookId": None,
 		"seriesId": None,
 		"position": None,
@@ -80,10 +83,10 @@ def bookDictToTuple(d):
 	return (d["bookId"], d["workId"])
 
 def workDictToTuple(d):
-	return (d["workId"], d["bestBookId"], d["seriesId"], d["position"], d["publicationDate"], d["lastChecked"])
+	return (d["workId"], d["workName"], d["bookImageUrl"], d["bestBookId"], d["seriesId"], d["position"], d["publicationDate"], d["lastChecked"])
 
 def seriesDictToTuple(d):
-	return (d["seriesId"], d["lastChecked"])
+	return (d["seriesId"], d["seriesName"], d["lastChecked"])
 
 def getBooksToWorks(bookIds):
 	bookToWork = {}
@@ -128,7 +131,7 @@ def getBooksToAdd(readInSeries):
 		if row['seriesId'] not in bestBookIds:
 			bestBookIds[row['seriesId']] = set()
 		if row['position'] > readInSeries[row['seriesId']]:
-			bestBookIds[row['seriesId']].add(row['bestBookId'])
+			bestBookIds[row['seriesId']].add(row)
 	return bestBookIds
 
 	# bestBookIds = set()
@@ -144,12 +147,12 @@ def insertBookRows(bookDicts):
 
 def insertWorkRows(workDicts):
 	workTuples = map(lambda x: workDictToTuple(x), workDicts)
-	get_db().cursor().executemany("INSERT OR REPLACE INTO works VALUES (?,?,?,?,?,?)", workTuples)
+	get_db().cursor().executemany("INSERT OR REPLACE INTO works VALUES (?,?,?,?,?,?,?,?)", workTuples)
 	get_db().commit()
 
 def insertSeriesRows(seriesDicts):
 	seriesTuples = map(lambda x: seriesDictToTuple(x), seriesDicts)
-	get_db().cursor().executemany("INSERT OR REPLACE INTO series VALUES (?,?)", seriesTuples)
+	get_db().cursor().executemany("INSERT OR REPLACE INTO series VALUES (?,?,?)", seriesTuples)
 	get_db().commit()
 
 #######################
@@ -189,6 +192,11 @@ goodreads = GoodreadsOAuthRemoteApp(oauth, 'goodreads',
 @goodreads.tokengetter
 def get_goodreads_token(token=None):
 	return session.get('goodreads_token')
+
+def safeStrip(s):
+	if s:
+		return s.strip()
+	return s
 
 ####
 # Util things
@@ -244,6 +252,20 @@ def parsePosition(text):
 		print "Error parsing position: ", text
 		return 0
 
+# def parseTitle(text):
+# 	if text:
+# 		return text.strip()
+# 	return "Untitled"
+
+def parseTitle(work, bestBook):
+	workTitle = work.find("original_title").text
+	if workTitle:
+		return workTitle.strip()
+	bestBookTitle = bestBook.find("title").text
+	if bestBookTitle:
+		return re.sub(r'\([^)]*\)', '', bestBookTitle).strip()
+	return "Untitled"
+
 def getBookInfo(bookId):
 	print "get book info: ", bookId
 	bookInfo = goodreads.get('/book/show/' + str(bookId), data = {
@@ -255,7 +277,15 @@ def getBookInfo(bookId):
 	bookDict = { "bookId": bookId, "workId": workId }
 
 	workDict = newWorkDict()
+
+	print "----------- ", bookId
+	print bookInfo
+	print bookInfo.find("work/original_title").text
+	print bookInfo.find("image_url").text
+
 	workDict["workId"] = workId
+	workDict["workName"] = parseTitle(bookInfo.find("work"), bookInfo)
+	workDict["bookImageUrl"] = safeStrip(bookInfo.find("image_url").text)
 	workDict["bestBookId"] = int(bookInfo.find("work/best_book_id").text)
 	workDict["lastChecked"] = date.today().toordinal()
 
@@ -282,10 +312,11 @@ def processNewBooks(bookIds):
 	insertWorkRows(workDicts)
 	return workIds
 
-
 def seriesWorkToWorkRow(sw, seriesId):
 	workDict = newWorkDict()
 	workDict["workId"] = int(sw.find("work/id").text)
+	workDict["workName"] = parseTitle(sw.find("work"), sw.find("work/best_book"))
+	workDict["bookImageUrl"] = safeStrip(sw.find("work/best_book/image_url").text)
 	workDict["bestBookId"] = int(sw.find("work/best_book/id").text)
 	workDict["lastChecked"] = date.today().toordinal()
 
@@ -304,7 +335,9 @@ def getSeriesInfo(seriesId):
 		'key': config.goodreadsKey
 	}).data.find("series")
 	# laksjdlfjalsdjlfkj
-	seriesDict = { "seriesId": seriesId, "lastChecked": date.today().toordinal() }
+	seriesName = seriesInfo.find("title").text.strip()
+	print "seriesName: ", seriesName
+	seriesDict = {"seriesId": seriesId, "seriesName": seriesName, "lastChecked": date.today().toordinal() }
 	workDicts = map(lambda sw: seriesWorkToWorkRow(sw, seriesId), seriesInfo.findall("./series_works/series_work"))
 	return workDicts, seriesDict
 
@@ -401,14 +434,23 @@ def logged_in():
 @app.route('/sequelize', methods=['POST'])
 def sequelize():
 	booksToAdd = makeSequelsShelf(request.json['name'], request.json['count'])
+
+	shelfName = request.json['name']
+	newShelfName = shelfName + ' Sequels'
 	# print "getting books on shelf: ", request.json['name']
 	# # get name of every book on shelf
 	# getAllBooksFromShelf(request.json['name'], request.json['count'])
 
+	booksToAdd = {k:v for k,v in booksToAdd.iteritems() if len(v) > 0}
+
 	# Get human readable information
+	print "newShelfName: ", newShelfName
 
 	print "rendering template"
-	return render_template('newshelf.html', booksToAdd=booksToAdd)
+	return render_template(
+		'newshelf.html',
+		booksToAdd=booksToAdd,
+		newShelfName=newShelfName)
 
 @app.route('/createShelf', methods=['POST'])
 def createShelf():
@@ -441,6 +483,9 @@ def login():
 	return goodreads.authorize(callback=url_for('oauth_authorized',
 		next=request.args.get('next') or request.referrer or None))
 
+@app.route('/resetdatabase')
+def resetDatabase():
+	init_db()
 
 @app.route('/oauth_authorized')
 def oauth_authorized():
