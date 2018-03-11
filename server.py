@@ -127,11 +127,11 @@ def getSeriesToQuery(seriesIds):
 
 def getBooksToAdd(readInSeries):
 	bestBookIds = {}
-	for row in query_db("SELECT * FROM works WHERE seriesId IN (%s)" % joinInts(readInSeries.keys())):
+	for row in query_db("SELECT * FROM works WHERE seriesId IN (%s) ORDER BY position ASC" % joinInts(readInSeries.keys())):
 		if row['seriesId'] not in bestBookIds:
-			bestBookIds[row['seriesId']] = set()
+			bestBookIds[row['seriesId']] = []
 		if row['position'] > readInSeries[row['seriesId']]:
-			bestBookIds[row['seriesId']].add(row)
+			bestBookIds[row['seriesId']].append(row)
 	return bestBookIds
 
 	# bestBookIds = set()

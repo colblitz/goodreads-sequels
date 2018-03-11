@@ -1,8 +1,14 @@
+{% macro book(name, url, position) -%}
+	<div class="book">
+		{{name}}, <img src="{{url}}"> ({{position}})
+	</div>
+{%- endmacro %}
+
 <div>
 	Enter a name for the new shelf: <input type="text" name="fname" value="{{newShelfName}}"><br>
 	<ul>
 		{% for seriesId in booksToAdd %}
-		  <li>{{seriesId}} - {% for work in booksToAdd[seriesId] %} {{work["workName"]}} ({{work["position"]}}) {% endfor %}</li>
+		  <li>{{seriesId}} - {% for work in booksToAdd[seriesId] %} {{ book(work["workName"], work["bookImageUrl"], work["position"]) }} {% endfor %}</li>
 		{% endfor %}
 	</ul>
 </div>
