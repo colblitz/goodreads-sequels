@@ -117,6 +117,12 @@ def getReadInformation(workIds):
 				readInSeries[row['seriesId']] = max(readInSeries[row['seriesId']], row['position'])
 	return unpublished, readInSeries
 
+def getSeriesNames(seriesIds):
+	seriesNames = {}
+	for row in query_db("SELECT * FROM series WHERE seriesId IN (%s)" % (joinInts(seriesIds))):
+		seriesNames[row['seriesId']] = row['seriesName']
+	return seriesNames
+
 def getSeriesToQuery(seriesIds):
 	# Remove ids that are in table and up-to-date
 	cutoff = date.today().toordinal() - 7
@@ -130,7 +136,7 @@ def getBooksToAdd(readInSeries):
 	for row in query_db("SELECT * FROM works WHERE seriesId IN (%s) ORDER BY position ASC" % joinInts(readInSeries.keys())):
 		if row['seriesId'] not in bestBookIds:
 			bestBookIds[row['seriesId']] = []
-		if row['position'] > readInSeries[row['seriesId']]:
+		if row['position'] >= readInSeries[row['seriesId']]:
 			bestBookIds[row['seriesId']].append(row)
 	return bestBookIds
 
@@ -441,7 +447,10 @@ def sequelize():
 	# # get name of every book on shelf
 	# getAllBooksFromShelf(request.json['name'], request.json['count'])
 
-	booksToAdd = {k:v for k,v in booksToAdd.iteritems() if len(v) > 0}
+	booksToAdd = {k:v for k,v in booksToAdd.iteritems() if len(v) > 1}
+	readBooks = {k:v[0] for k,v in booksToAdd.iteritems()}
+	booksToAdd = {k:v[1:] for k,v in booksToAdd.iteritems()}
+	seriesNames = getSeriesNames(booksToAdd.keys())
 
 	# Get human readable information
 	print "newShelfName: ", newShelfName
@@ -450,6 +459,8 @@ def sequelize():
 	return render_template(
 		'newshelf.html',
 		booksToAdd=booksToAdd,
+		readBooks=readBooks,
+		seriesNames=seriesNames,
 		newShelfName=newShelfName)
 
 @app.route('/createShelf', methods=['POST'])

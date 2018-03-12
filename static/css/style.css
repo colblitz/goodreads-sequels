@@ -3,3 +3,16 @@ footer {
   bottom: 0;
   width: 100%;
 }
+
+.book {
+	display: inline-block;
+  border: 1px solid black;
+}
+
+.book-read {
+	background-color: #D4E9FE;
+}
+
+.book-selected {
+	background-color: #ccffcc;
+}

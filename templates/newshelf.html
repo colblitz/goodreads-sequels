@@ -1,14 +1,23 @@
-{% macro book(name, url, position) -%}
-	<div class="book">
-		{{name}}, <img src="{{url}}"> ({{position}})
+{% macro book(workRow, selectable) -%}
+	<div class="book {% if selectable %}book-selectable book-selected{% endif %}" data-book-id={{workRow["bestBookId"]}}>
+		{{workRow["workName"]}}, <img src="{{workRow['bookImageUrl']}}"> ({{workRow["position"]}})
 	</div>
 {%- endmacro %}
 
-<div>
-	Enter a name for the new shelf: <input type="text" name="fname" value="{{newShelfName}}"><br>
-	<ul>
+<div class="shelf-form">
+	<div class="shelf-name-input">
+		Enter a name for the new shelf: <input type="text" name="fname" value="{{newShelfName}}"><br>
+	</div>
+	<div class="shelf-books">
 		{% for seriesId in booksToAdd %}
-		  <li>{{seriesId}} - {% for work in booksToAdd[seriesId] %} {{ book(work["workName"], work["bookImageUrl"], work["position"]) }} {% endfor %}</li>
+		  <div class="shelf-series">
+		  	{{seriesNames[seriesId]}}
+		  	<div class="book book-read">
+		  		{{ book(readBooks[seriesId], false)}}
+		  	</div>
+		  	{% for work in booksToAdd[seriesId] %} {{ book(work, true) }} {% endfor %}
+		  </div>
 		{% endfor %}
-	</ul>
+	</div>
+	<button type="button" class="shelf-create-button">Create</button>
 </div>
