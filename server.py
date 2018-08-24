@@ -41,6 +41,11 @@ def init_db():
 			db.cursor().executescript(f.read())
 		db.commit()
 
+print "Checking for database:"
+if not os.path.isfile(DATABASE):
+	print "db not found, creating"
+	init_db()
+
 @app.teardown_appcontext
 def close_connection(exception):
 	db = getattr(g, '_database', None)
