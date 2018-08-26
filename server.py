@@ -1,4 +1,4 @@
-from flask import Flask, send_file, request, redirect, url_for, flash, session, render_template, g
+from flask import Flask, send_file, request, redirect, url_for, flash, session, render_template, g, json
 from flask_oauthlib.client import OAuth, OAuthException, OAuthRemoteApp, parse_response
 from werkzeug import url_decode
 
@@ -362,7 +362,7 @@ def processSeries(seriesIds):
 	insertWorkRows(allWorkDicts)
 	insertSeriesRows(seriesDicts)
 
-def makeSequelsShelf(name, count):
+def getSequels(name, count):
 	bookIds = getAllBooksFromShelf(name, count)
 	bookToWorkIds = getBooksToWorks(bookIds)
 	print "bookToWorkIds: ", bookToWorkIds
@@ -387,22 +387,20 @@ def makeSequelsShelf(name, count):
 
 	return booksToAdd
 
+def makeSequelsShelf(name, booksToAdd)
+	print "creating new shelf: " + name
+	goodreads.post('/user_shelves.xml', data = {
+		'user_shelf[name]': name
+	})
+	print "done creating new shelf"
 
-	# # create new shelf
-	# newShelfName = name + '-sequels'
-	# print "creating new shelf"
-	# goodreads.post('/user_shelves.xml', data = {
-	# 	'user_shelf[name]': newShelfName
-	# })
-	# print "done creating new shelf: ", newShelfName
-
-	# print "adding books to new shelf"
-	# # add all books to new shelf
-	# goodreads.post('/shelf/add_books_to_shelves.xml', data = {
-	# 	'bookids': joinInts(booksToAdd),
-	# 	'shelves': newShelfName + ",to-read"
-	# })
-	# print "done"
+	print "adding books to shelf"
+	goodreads.post('/shelf/add_books_to_shelves.xml', data = {
+		'bookids': joinInts(booksToAdd),
+		'shelves': name
+		# 'shelves': name + ",to-read"
+	})
+	print "done"
 
 ##############
 # Flask Routes
@@ -444,7 +442,7 @@ def logged_in():
 
 @app.route('/sequelize', methods=['POST'])
 def sequelize():
-	booksToAdd = makeSequelsShelf(request.json['name'], request.json['count'])
+	booksToAdd = getSequels(request.json['name'], request.json['count'])
 
 	shelfName = request.json['name']
 	newShelfName = shelfName + ' Sequels'
@@ -470,24 +468,15 @@ def sequelize():
 
 @app.route('/createShelf', methods=['POST'])
 def createShelf():
+	print "in createShelf"
+	booksToAdd = request.json['booksToAdd']
+	shelfName = request.json['shelfName']
+	print "want to add books "
+	print booksToAdd
+	print "to new shelf " + shelfName
 
-	# # create new shelf
-	# newShelfName = name + '-sequels'
-	# print "creating new shelf"
-	# goodreads.post('/user_shelves.xml', data = {
-	# 	'user_shelf[name]': newShelfName
-	# })
-	# print "done creating new shelf: ", newShelfName
-
-	# print "adding books to new shelf"
-	# # add all books to new shelf
-	# goodreads.post('/shelf/add_books_to_shelves.xml', data = {
-	# 	'bookids': joinInts(booksToAdd),
-	# 	'shelves': newShelfName + ",to-read"
-	# })
-	# print "done"
-
-	return render_template('index.html')
+	makeSequelsShelf(shelfName, booksToAdd)
+	return json.dumps(True)
 
 
 @app.route('/denied')

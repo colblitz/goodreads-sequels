@@ -5,14 +5,26 @@ footer {
 }
 
 .book {
-	display: inline-block;
+  display: inline-block;
   border: 1px solid black;
 }
 
 .book-read {
-	background-color: #D4E9FE;
+  background-color: #D4E9FE;
 }
 
 .book-selected {
-	background-color: #ccffcc;
+  background-color: #ccffcc;
+}
+
+.ignored {
+  background-color: red;
+}
+
+.shelf-form {
+  border: 1px solid blue;
+}
+
+.shelf-series {
+  border: 1px solid red
 }
